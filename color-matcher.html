@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RGB Color Match Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Poppins", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .color-box {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      gap: 10px;
+    }
+
+    .box {
+      flex: 1;
+      height: 100px;
+      border-radius: 12px;
+      border: 2px solid #ccc;
+    }
+
+    .slider-group {
+      width: 100%;
+      margin: 10px 0;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 5px;
+      text-align: left;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #007bff;
+    }
+
+    .progress-container {
+      width: 100%;
+      background: #ddd;
+      border-radius: 10px;
+      height: 15px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00c853, #00e676);
+      transition: width 0.3s ease;
+    }
+
+    .score {
+      margin-top: 8px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    button {
+      margin-top: 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    /* Full-screen confetti canvas */
+    #confettiCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    @media (max-width: 480px) {
+      .box {
+        height: 80px;
+      }
+      button {
+        font-size: 15px;
+        padding: 8px 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="confettiCanvas"></canvas>
+
+  <div class="container">
+    <h2>🎨 RGB Color Match</h2>
+
+    <div class="color-box">
+      <div class="box" id="targetColor"></div>
+      <div class="box" id="userColor"></div>
+    </div>
+
+    <div class="slider-group">
+      <label for="red">Red</label>
+      <input type="range" id="red" min="0" max="255" value="0" />
+    </div>
+    <div class="slider-group">
+      <label for="green">Green</label>
+      <input type="range" id="green" min="0" max="255" value="0" />
+    </div>
+    <div class="slider-group">
+      <label for="blue">Blue</label>
+      <input type="range" id="blue" min="0" max="255" value="0" />
+    </div>
+
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="score" id="scoreText">Match: 0%</div>
+
+    <button id="newColorBtn">New Color</button>
+  </div>
+
+  <script>
+    const targetBox = document.getElementById("targetColor");
+    const userBox = document.getElementById("userColor");
+    const progressBar = document.getElementById("progressBar");
+    const scoreText = document.getElementById("scoreText");
+    const newColorBtn = document.getElementById("newColorBtn");
+    const red = document.getElementById("red");
+    const green = document.getElementById("green");
+    const blue = document.getElementById("blue");
+    const canvas = document.getElementById("confettiCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let targetColor = { r: 0, g: 0, b: 0 };
+    let confetti = [];
+    let confettiActive = false;
+
+    function randomColor() {
+      return {
+        r: Math.floor(Math.random() * 256),
+        g: Math.floor(Math.random() * 256),
+        b: Math.floor(Math.random() * 256),
+      };
+    }
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    function updateTargetColor() {
+      targetColor = randomColor();
+      targetBox.style.backgroundColor = `rgb(${targetColor.r}, ${targetColor.g}, ${targetColor.b})`;
+      resetUser();
+    }
+
+    function resetUser() {
+      red.value = 0;
+      green.value = 0;
+      blue.value = 0;
+      updateUserColor();
+    }
+
+    function updateUserColor() {
+      const r = parseInt(red.value);
+      const g = parseInt(green.value);
+      const b = parseInt(blue.value);
+
+      userBox.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+      const diff =
+        Math.sqrt(
+          Math.pow(r - targetColor.r, 2) +
+            Math.pow(g - targetColor.g, 2) +
+            Math.pow(b - targetColor.b, 2)
+        ) / Math.sqrt(3 * Math.pow(255, 2));
+
+      const match = Math.round((1 - diff) * 100);
+      progressBar.style.width = `${match}%`;
+      scoreText.textContent = `Match: ${match}%`;
+
+      if (match === 100 && !confettiActive) {
+        launchConfetti();
+      }
+    }
+
+    function launchConfetti() {
+      confettiActive = true;
+      confetti = [];
+      resizeCanvas();
+
+      for (let i = 0; i < 200; i++) {
+        confetti.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * -canvas.height,
+          r: Math.random() * 6 + 4,
+          d: Math.random() * 0.8 + 0.2,
+          color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+        });
+      }
+
+      let animation = setInterval(() => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        confetti.forEach((p) => {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x, p.y, p.r, p.r);
+          p.y += p.d * 8;
+          p.x += Math.sin(p.y / 20);
+          if (p.y > canvas.height) p.y = -10;
+        });
+      }, 16);
+
+      setTimeout(() => {
+        clearInterval(animation);
+        confettiActive = false;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }, 3000);
+    }
+
+    [red, green, blue].forEach((slider) => {
+      slider.addEventListener("input", updateUserColor);
+    });
+
+    newColorBtn.addEventListener("click", () => {
+      updateTargetColor();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      confettiActive = false;
+    });
+
+    updateTargetColor();
+    resizeCanvas();
+  </script>
+</body>
+</html>
